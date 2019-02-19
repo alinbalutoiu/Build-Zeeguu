@@ -10,6 +10,10 @@ COPY Zeeguu-API /opt/Zeeguu-API
 WORKDIR /opt/Zeeguu-API
 RUN python setup.py install
 
+# Copy .git folder to have access to Zeeguu-API commit history
+# for Flask-MonitoringDashboard
+COPY .git /opt/.git
+
 WORKDIR /opt/Zeeguu-API
 
 # Running the API in debug mode

@@ -28,6 +28,10 @@ WORKDIR /opt/Zeeguu-API
 RUN pip install -r requirements.txt
 RUN python setup.py install
 
+# Copy .git folder to have access to Zeeguu-API commit history
+# for Flask-MonitoringDashboard
+COPY .git /opt/.git
+
 # Set default path to config
 ENV ZEEGUU_CORE_CONFIG=/opt/Zeeguu-Core/default_core.cfg
 ENV ZEEGUU_API_CONFIG=/opt/Zeeguu-API/default_api.cfg
