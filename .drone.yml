@@ -1,0 +1,72 @@
+kind: pipeline
+name: default
+
+clone:
+  git:
+    image: plugins/git
+    recursive: true
+    tags: true
+
+steps:
+- name: init-modules
+  image: python:3.6
+  volumes:
+  - name: python-site-packages
+    path: /usr/local/lib/python3.6/site-packages
+  commands:
+    - git submodule update --init --recursive
+    - pip install -r Zeeguu-Core/requirements.txt
+    - python -m nltk.downloader -d ~/nltk_data punkt
+    - cp config/api.cfg.default config/api.cfg
+    - cp config/core.cfg.default config/core.cfg
+    - cp config/fmd.cfg.default config/fmd.cfg
+    - cp config/teacherdash.cfg.default config/teacherdash.cfg
+    - cp config/web.cfg.default config/web.cfg
+    - cp docker-files/zeeguu-web/apache-zeeguu.conf.default docker-files/zeeguu-web/apache-zeeguu.conf
+
+- name: run-core-tests
+  image: python:3.6
+  volumes:
+  - name: python-site-packages
+    path: /usr/local/lib/python3.6/site-packages
+  commands:
+    - cd Zeeguu-Core
+    - python setup.py install
+    - ./run_tests.sh
+  depends_on: [init-modules]
+
+- name: run-api-tests
+  image: python:3.6
+  volumes:
+  - name: python-site-packages
+    path: /usr/local/lib/python3.6/site-packages
+  commands:
+    - cd Zeeguu-API
+    - pip install -r requirements.txt
+    - python setup.py develop
+    - ./run_tests.sh
+  depends_on: [init-modules]
+
+- name: build-api-core
+  image: banzaicloud/drone-kaniko
+  settings:
+    dockerfile: docker-files/zeeguu-api-core/Dockerfile
+    build_args:
+      - API_VERSION=nightly
+  depends_on: [run-core-tests, run-api-tests]
+
+- name: build-mysql
+  image: banzaicloud/drone-kaniko
+  settings:
+    dockerfile: docker-files/zeeguu-mysql/Dockerfile
+  depends_on: [run-core-tests, run-api-tests]
+
+- name: build-web
+  image: banzaicloud/drone-kaniko
+  settings:
+    dockerfile: docker-files/zeeguu-web/Dockerfile
+  depends_on: [run-core-tests, run-api-tests]
+
+volumes:
+- name: python-site-packages
+  temp: {}
